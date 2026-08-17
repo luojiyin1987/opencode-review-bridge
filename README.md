@@ -42,12 +42,61 @@ The v0 GitHub transport expects:
 
 The adapter invokes `gh` directly with argument arrays and passes comment bodies through stdin; it does not execute handoff text as shell input.
 
+## Global install
+
+The current installer targets WSL, Linux, and other POSIX environments with `bash` available.
+
+From a stable local checkout:
+
+```bash
+git clone https://github.com/luojiyin1987/opencode-review-bridge.git
+cd opencode-review-bridge
+npm run install-global
+```
+
+If the CLI wrapper was installed manually before this command existed, the equivalent update command is:
+
+```bash
+opencode-review-bridge install
+```
+
+The installer creates or updates these bridge-managed files:
+
+```text
+~/.local/bin/opencode-review-bridge
+~/.config/opencode/commands/review-pull.md
+~/.config/opencode/commands/review-push.md
+```
+
+The CLI wrapper points at the checkout where the install command was run. Pulling new bridge source updates therefore changes CLI behavior immediately; rerun `opencode-review-bridge install` when the checkout moves or the OpenCode command templates change.
+
+Installation is idempotent for bridge-managed files. If a global `review-pull.md`, `review-push.md`, or CLI wrapper already exists and does not look bridge-managed, installation stops instead of overwriting it.
+
+If the installer warns that `~/.local/bin` is not on `PATH`, add it to the shell environment before using the CLI:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Then verify:
+
+```bash
+opencode-review-bridge --help
+```
+
+Once installed, start OpenCode from any PR-backed repository and use:
+
+```text
+/review-pull
+/review-push
+```
+
 ## Pull a reviewer handoff
 
 From a checkout whose current branch has a pull request:
 
 ```bash
-npm run review-pull
+opencode-review-bridge review-pull
 ```
 
 The command returns one of three explicit states:
@@ -56,10 +105,16 @@ The command returns one of three explicit states:
 - `STALE`: the newest executor handoff targets another revision; the old task body is not emitted
 - `NONE`: there is no actionable plan or change request
 
-This repository includes a project-local OpenCode command at `.opencode/commands/review-pull.md`:
+The OpenCode command is:
 
 ```text
 /review-pull
+```
+
+The repository-local npm script remains available while developing the bridge itself:
+
+```bash
+npm run review-pull
 ```
 
 ## Push an implementation result
@@ -78,7 +133,7 @@ This repository includes a project-local OpenCode command at `.opencode/commands
 Run it with:
 
 ```bash
-npm run review-push -- --file .git/opencode-review-bridge-result.json
+opencode-review-bridge review-push --file .git/opencode-review-bridge-result.json
 ```
 
 Before posting, the command requires:
@@ -88,15 +143,13 @@ Before posting, the command requires:
 
 This prevents local-only or unpushed changes from being advertised as `ready_to_review`.
 
-The project-local OpenCode command is:
+The OpenCode command is:
 
 ```text
 /review-push
 ```
 
 It asks OpenCode to summarize only observed implementation and validation results into a temporary JSON file under `.git/`, invoke the CLI, and remove the temporary file. It does not automatically commit, push, or merge code.
-
-Packaging these commands for reuse from unrelated repositories is intentionally left for a later change.
 
 ## Scope
 
@@ -106,7 +159,8 @@ The first usable version stays deliberately small:
 2. pull the latest actionable handoff from the current GitHub PR
 3. turn it into an OpenCode task
 4. push an implementation result back to the PR
-5. keep the user in control of every review/fix iteration
+5. install the bridge commands for reuse across local repositories
+6. keep the user in control of every review/fix iteration
 
 ## Non-goals for v0
 
@@ -122,6 +176,7 @@ The first usable version stays deliberately small:
 Implemented:
 
 ```text
+opencode-review-bridge install
 /review-pull
 /review-push
 ```

@@ -7,6 +7,7 @@
     "node": ">=22.6"
   },
   "scripts": {
+    "install-global": "node --experimental-strip-types src/cli.ts install",
     "review-pull": "node --experimental-strip-types src/cli.ts review-pull",
     "review-push": "node --experimental-strip-types src/cli.ts review-push",
     "test": "node --experimental-strip-types --test test/*.test.ts"
