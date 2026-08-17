@@ -4,6 +4,7 @@ import { parseHandoff } from './parser.ts'
 import { isCommitSha, shaMatches, type HandoffPacket, type HandoffRole } from './protocol.ts'
 
 const COMMENTS_PAGE_SIZE = 100
+const PULL_FILES_PAGE_SIZE = 100
 
 export interface PullRequestContext {
   repository: string
@@ -95,6 +96,38 @@ export class GitHubHandoffAdapter {
     }
 
     return readHandoffComments(comments)
+  }
+
+  listChangedFiles(context: PullRequestContext = this.getCurrentPullRequest()): string[] {
+    const filenames: string[] = []
+
+    for (let page = 1; ; page += 1) {
+      const output = this.#runJson([
+        'api',
+        `repos/${context.repository}/pulls/${context.number}/files?per_page=${PULL_FILES_PAGE_SIZE}&page=${page}`,
+      ])
+
+      if (!Array.isArray(output)) {
+        throw new TypeError('Invalid pull request files response from gh')
+      }
+
+      for (const entry of output) {
+        if (
+          !isRecord(entry)
+          || typeof entry.filename !== 'string'
+          || entry.filename.length === 0
+          || entry.filename.includes('\n')
+          || entry.filename.includes('\r')
+        ) {
+          throw new TypeError('Invalid pull request file from gh')
+        }
+        filenames.push(entry.filename)
+      }
+
+      if (output.length < PULL_FILES_PAGE_SIZE) break
+    }
+
+    return filenames
   }
 
   getLatestHandoff(

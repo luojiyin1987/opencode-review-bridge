@@ -122,6 +122,39 @@ test('lists valid handoffs across manually paginated issue comments', () => {
   assert.deepEqual(handoffs.map((item) => item.packet.body), ['do this', 'fix this'])
 })
 
+test('lists canonical pull request filenames across manually paginated files', () => {
+  const calls: string[][] = []
+  const firstPage = Array.from({ length: 100 }, (_, index) => ({
+    filename: `src/file-${index}.ts`,
+  }))
+
+  const runner: GhRunner = (args) => {
+    calls.push([...args])
+    assert.equal(args[0], 'api')
+    assert.equal(args.length, 2)
+
+    if (args[1].endsWith('per_page=100&page=1')) return JSON.stringify(firstPage)
+    if (args[1].endsWith('per_page=100&page=2')) {
+      return JSON.stringify([
+        { filename: 'README.md' },
+        { filename: 'test/review-push.test.ts' },
+      ])
+    }
+
+    throw new Error(`Unexpected gh call: ${args.join(' ')}`)
+  }
+
+  const files = new GitHubHandoffAdapter(runner).listChangedFiles(CONTEXT)
+
+  assert.equal(files.length, 102)
+  assert.equal(files[0], 'src/file-0.ts')
+  assert.deepEqual(files.slice(-2), ['README.md', 'test/review-push.test.ts'])
+  assert.deepEqual(calls, [
+    ['api', 'repos/owner/repo/pulls/12/files?per_page=100&page=1'],
+    ['api', 'repos/owner/repo/pulls/12/files?per_page=100&page=2'],
+  ])
+})
+
 test('selects the newest role-relevant handoff', () => {
   const comments = [
     comment(1, '2026-08-17T07:01:00Z', packet('plan', 'ready_to_implement', null)),

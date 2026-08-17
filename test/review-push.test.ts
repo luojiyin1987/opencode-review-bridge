@@ -29,14 +29,22 @@ const context: PullRequestContext = {
 const report: ImplementationReport = {
   addressed: ['Implemented review-push orchestration.'],
   validation: ['npm test: PASS'],
-  changed: ['src/review-push.ts', 'test/review-push.test.ts'],
   remainingConcerns: [],
 }
 
-function source(onPost?: (packet: HandoffPacket) => void): ReviewPushSource {
+const changedFiles = ['src/review-push.ts', 'test/review-push.test.ts']
+
+function source(
+  onPost?: (packet: HandoffPacket) => void,
+  files: string[] = changedFiles,
+): ReviewPushSource {
   return {
     getCurrentPullRequest() {
       return context
+    },
+    listChangedFiles(receivedContext) {
+      assert.equal(receivedContext, context)
+      return files
     },
     postHandoff(packet, receivedContext) {
       assert.equal(receivedContext, context)
@@ -56,8 +64,8 @@ function workspace(state = { head: HEAD, clean: true }): ReviewPushWorkspace {
   return { getState: () => state }
 }
 
-test('renders a concise implementation result body', () => {
-  const body = renderImplementationReport(report)
+test('renders a concise implementation result body with canonical changed files', () => {
+  const body = renderImplementationReport(report, changedFiles)
 
   assert.match(body, /## Addressed/)
   assert.match(body, /Implemented review-push orchestration/)
@@ -74,8 +82,27 @@ test('posts an implementation_result bound to the current PR head', () => {
   assert.equal(posted?.metadata.state, 'ready_to_review')
   assert.equal(posted?.metadata.head, HEAD)
   assert.match(posted?.body ?? '', /npm test: PASS/)
+  assert.match(posted?.body ?? '', /src\/review-push\.ts/)
   assert.match(output, /Status: POSTED/)
   assert.match(output, /issuecomment-55/)
+})
+
+test('ignores legacy model-authored changed input and publishes GitHub filenames', () => {
+  const normalized = normalizeImplementationReport({
+    ...report,
+    changed: ['made-up.ts'],
+  })
+  let posted: HandoffPacket | undefined
+
+  reviewPush(
+    normalized,
+    source((packet) => { posted = packet }, ['actual.ts']),
+    workspace(),
+  )
+
+  assert.deepEqual(normalized, report)
+  assert.match(posted?.body ?? '', /- actual\.ts/)
+  assert.doesNotMatch(posted?.body ?? '', /made-up\.ts/)
 })
 
 test('rejects a dirty working tree before posting', () => {
@@ -103,14 +130,12 @@ test('normalizes report items and rejects multiline content', () => {
   assert.deepEqual(normalizeImplementationReport({
     addressed: ['  fixed item  '],
     validation: [],
-    changed: [],
     remainingConcerns: [],
   }).addressed, ['fixed item'])
 
   assert.throws(() => normalizeImplementationReport({
     addressed: ['line one\nline two'],
     validation: [],
-    changed: [],
     remainingConcerns: [],
   }), /single-line/)
 })
