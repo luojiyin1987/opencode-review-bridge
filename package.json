@@ -11,6 +11,7 @@
     "review-pull": "node --experimental-strip-types src/cli.ts review-pull",
     "review-push": "node --experimental-strip-types src/cli.ts review-push",
     "review-status": "node --experimental-strip-types src/cli.ts review-status",
+    "review-submit": "node --experimental-strip-types src/cli.ts review-submit",
     "test": "node --experimental-strip-types --test test/*.test.ts"
   }
 }

@@ -7,6 +7,11 @@ import {
   type ImplementationReport,
 } from './review-push.ts'
 import { reviewStatus } from './review-status.ts'
+import {
+  readReviewReportFile,
+  reviewSubmit,
+  type ReviewReport,
+} from './review-submit.ts'
 
 export interface CliIo {
   stdout: (value: string) => void
@@ -25,6 +30,7 @@ export function main(
   push: (report: ImplementationReport) => string = reviewPush,
   install: () => InstallResult = installGlobal,
   status: () => string = reviewStatus,
+  submit: (report: ReviewReport) => string = reviewSubmit,
 ): number {
   const [command, ...rest] = args
 
@@ -85,6 +91,23 @@ export function main(
     }
   }
 
+  if (command === 'review-submit') {
+    const file = readFileArgument(rest)
+    if (!file) {
+      io.stderr(`review-submit requires --file <review.json>\n\n${usage()}\n`)
+      return 1
+    }
+
+    try {
+      const report = readReviewReportFile(file)
+      io.stdout(`${submit(report)}\n`)
+      return 0
+    } catch (error) {
+      io.stderr(`review-submit failed: ${formatError(error)}\n`)
+      return 1
+    }
+  }
+
   if (command === undefined || command === '--help' || command === '-h' || command === 'help') {
     io.stdout(`${usage()}\n`)
     return 0
@@ -111,6 +134,7 @@ function usage(): string {
     '  review-pull                 Pull the latest actionable executor handoff from the current PR',
     '  review-push --file <path>   Publish an implementation result for the current PR head',
     '  review-status               Show the latest bridge handoff state for the current PR',
+    '  review-submit --file <path> Publish a reviewer decision for a ready implementation result',
   ].join('\n')
 }
 
