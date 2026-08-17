@@ -179,7 +179,7 @@ Integrations that already have the JSON in memory can stream the same report wit
 cat review.json | opencode-review-bridge review-submit --stdin
 ```
 
-Exactly one input mode is required. `--stdin` reads one JSON document until EOF and applies the same report validation and current-head guards as `--file`.
+Exactly one input mode is required. `--stdin` reads one JSON document from piped input and applies the same report validation and current-head guards as `--file`. If `--stdin` is invoked directly from an interactive terminal without a pipe, the CLI refuses the request instead of waiting for EOF.
 
 The command only publishes when the latest valid v1 handoff is a current `implementation_result / ready_to_review`. This prevents a reviewer from skipping the executor result or reviewing an older PR revision.
 

@@ -34,7 +34,7 @@ export function main(
   install: () => InstallResult = installGlobal,
   status: () => string = reviewStatus,
   submit: (report: ReviewReport) => string = reviewSubmit,
-  readStdin: () => string = () => readFileSync(0, 'utf8'),
+  readStdin: () => string = defaultReadStdin,
 ): number {
   const [command, ...rest] = args
 
@@ -153,16 +153,24 @@ function readReviewReportStdin(readStdin: () => string): ReviewReport {
   return normalizeReviewReport(value)
 }
 
+function defaultReadStdin(): string {
+  if (process.stdin.isTTY) {
+    throw new Error('review-submit --stdin requires piped JSON input')
+  }
+
+  return readFileSync(0, 'utf8')
+}
+
 function usage(): string {
   return [
     'Usage: opencode-review-bridge <command>',
     '',
     'Commands:',
-    '  install                             Install the CLI wrapper and global OpenCode commands',
-    '  review-pull                         Pull the latest actionable executor handoff from the current PR',
-    '  review-push --file <path>           Publish an implementation result for the current PR head',
-    '  review-status                       Show the latest bridge handoff state for the current PR',
-    '  review-submit --file <path>|--stdin Publish a reviewer decision for a ready implementation result',
+    '  install                                Install the CLI wrapper and global OpenCode commands',
+    '  review-pull                            Pull the latest actionable executor handoff from the current PR',
+    '  review-push --file <path>              Publish an implementation result for the current PR head',
+    '  review-status                          Show the latest bridge handoff state for the current PR',
+    '  review-submit (--file <path> | --stdin) Publish a reviewer decision for a ready implementation result',
   ].join('\n')
 }
 
