@@ -7,6 +7,7 @@
     "node": ">=22.6"
   },
   "scripts": {
+    "review-pull": "node --experimental-strip-types src/cli.ts review-pull",
     "test": "node --experimental-strip-types --test test/*.test.ts"
   }
 }
