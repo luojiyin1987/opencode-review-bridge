@@ -56,19 +56,51 @@ The command returns one of three explicit states:
 - `STALE`: the newest executor handoff targets another revision; the old task body is not emitted
 - `NONE`: there is no actionable plan or change request
 
-This repository also includes a project-local OpenCode command at `.opencode/commands/review-pull.md`. While developing the bridge itself, run this in the OpenCode TUI:
+This repository includes a project-local OpenCode command at `.opencode/commands/review-pull.md`:
 
 ```text
 /review-pull
 ```
 
-The command injects the CLI output into the OpenCode prompt. `STALE` and `NONE` explicitly instruct the agent not to modify files.
+## Push an implementation result
 
-Packaging the command for reuse from unrelated repositories is intentionally left for a later change.
+`review-push` publishes a v1 `implementation_result` packet for the current PR head. It accepts a small JSON report instead of raw logs or conversation history:
+
+```json
+{
+  "addressed": ["Implemented the requested fix."],
+  "validation": ["npm test: PASS"],
+  "changed": ["src/example.ts", "test/example.test.ts"],
+  "remainingConcerns": []
+}
+```
+
+Run it with:
+
+```bash
+npm run review-push -- --file .git/opencode-review-bridge-result.json
+```
+
+Before posting, the command requires:
+
+- a clean working tree
+- local `HEAD` to match the current GitHub PR head
+
+This prevents local-only or unpushed changes from being advertised as `ready_to_review`.
+
+The project-local OpenCode command is:
+
+```text
+/review-push
+```
+
+It asks OpenCode to summarize only observed implementation and validation results into a temporary JSON file under `.git/`, invoke the CLI, and remove the temporary file. It does not automatically commit, push, or merge code.
+
+Packaging these commands for reuse from unrelated repositories is intentionally left for a later change.
 
 ## Scope
 
-The first usable version will stay deliberately small:
+The first usable version stays deliberately small:
 
 1. define the handoff protocol
 2. pull the latest actionable handoff from the current GitHub PR
@@ -91,11 +123,11 @@ Implemented:
 
 ```text
 /review-pull
+/review-push
 ```
 
 Planned:
 
 ```text
 /review-status
-/review-push
 ```
