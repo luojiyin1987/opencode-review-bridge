@@ -143,9 +143,10 @@ function readReviewSubmitInput(
 }
 
 function readReviewReportStdin(readStdin: () => string): ReviewReport {
+  const input = readStdin()
   let value: unknown
   try {
-    value = JSON.parse(readStdin())
+    value = JSON.parse(input)
   } catch (cause) {
     throw new TypeError('Could not parse reviewer report from stdin', { cause })
   }
