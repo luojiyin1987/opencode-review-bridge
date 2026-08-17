@@ -170,12 +170,19 @@ export class GitHubHandoffAdapter {
   }
 
   #runReadJson(args: readonly string[], input?: string): unknown {
+    let firstTransientError: GitHubCommandError | null = null
+
     for (let attempt = 1; attempt <= READ_RETRY_ATTEMPTS; attempt += 1) {
       try {
         return this.#runJson(args, input)
       } catch (error) {
-        if (attempt === READ_RETRY_ATTEMPTS || !isTransientGitHubReadError(error)) {
+        if (!isTransientGitHubReadError(error)) {
           throw error
+        }
+
+        firstTransientError ??= error
+        if (attempt === READ_RETRY_ATTEMPTS) {
+          throw firstTransientError
         }
       }
     }
@@ -213,7 +220,7 @@ export function selectLatestHandoff(
   return { status: 'none' }
 }
 
-function isTransientGitHubReadError(error: unknown): boolean {
+function isTransientGitHubReadError(error: unknown): error is GitHubCommandError {
   if (!(error instanceof GitHubCommandError)) return false
 
   const cause = error.cause
