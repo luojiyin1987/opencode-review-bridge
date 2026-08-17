@@ -36,29 +36,40 @@ export class InstallConflictError extends Error {
   }
 }
 
+interface CommandInstall {
+  command: string
+  path: string
+  content: string
+}
+
 export function installGlobal(options: InstallOptions = {}): InstallResult {
   const home = options.home ?? homedir()
   const sourceRoot = options.sourceRoot ?? DEFAULT_SOURCE_ROOT
   const binDir = join(home, '.local', 'bin')
   const commandsDir = join(home, '.config', 'opencode', 'commands')
   const wrapperPath = join(binDir, 'opencode-review-bridge')
+  const wrapperContent = renderWrapper(join(sourceRoot, 'src', 'cli.ts'))
+  const commands = ['review-pull', 'review-push'].map((command): CommandInstall => {
+    const templatePath = join(sourceRoot, '.opencode', 'commands', `${command}.md`)
+    return {
+      command,
+      path: join(commandsDir, `${command}.md`),
+      content: renderGlobalCommand(readFileSync(templatePath, 'utf8')),
+    }
+  })
+
+  assertManagedWrapper(wrapperPath)
+  for (const command of commands) assertManagedCommand(command.path, command.command)
 
   mkdirSync(binDir, { recursive: true })
   mkdirSync(commandsDir, { recursive: true })
-
-  writeManagedWrapper(wrapperPath, renderWrapper(join(sourceRoot, 'src', 'cli.ts')))
-
-  const commandPaths = ['review-pull', 'review-push'].map((command) => {
-    const templatePath = join(sourceRoot, '.opencode', 'commands', `${command}.md`)
-    const outputPath = join(commandsDir, `${command}.md`)
-    const content = renderGlobalCommand(readFileSync(templatePath, 'utf8'))
-    writeManagedCommand(outputPath, content, command)
-    return outputPath
-  })
+  writeFileSync(wrapperPath, wrapperContent, 'utf8')
+  chmodSync(wrapperPath, 0o755)
+  for (const command of commands) writeFileSync(command.path, command.content, 'utf8')
 
   return {
     wrapperPath,
-    commandPaths,
+    commandPaths: commands.map((command) => command.path),
     pathWarning: !pathContains(options.path ?? process.env.PATH ?? '', binDir),
   }
 }
@@ -86,32 +97,27 @@ export function renderGlobalCommand(template: string): string {
   return rendered.replace('\n---\n\n', `\n---\n\n${MANAGED_COMMAND_MARKER}\n\n`)
 }
 
-function writeManagedWrapper(path: string, content: string): void {
-  if (existsSync(path)) {
-    const existing = readFileSync(path, 'utf8')
-    const looksLikeManualBridgeWrapper =
-      existing.includes('node --experimental-strip-types') && existing.includes('/src/cli.ts')
+function assertManagedWrapper(path: string): void {
+  if (!existsSync(path)) return
 
-    if (!existing.includes(MANAGED_WRAPPER_MARKER) && !looksLikeManualBridgeWrapper) {
-      throw new InstallConflictError(path)
-    }
+  const existing = readFileSync(path, 'utf8')
+  const looksLikeManualBridgeWrapper =
+    existing.includes('node --experimental-strip-types') && existing.includes('/src/cli.ts')
+
+  if (!existing.includes(MANAGED_WRAPPER_MARKER) && !looksLikeManualBridgeWrapper) {
+    throw new InstallConflictError(path)
   }
-
-  writeFileSync(path, content, 'utf8')
-  chmodSync(path, 0o755)
 }
 
-function writeManagedCommand(path: string, content: string, command: string): void {
-  if (existsSync(path)) {
-    const existing = readFileSync(path, 'utf8')
-    const looksLikeManualBridgeCommand = existing.includes(`opencode-review-bridge ${command}`)
+function assertManagedCommand(path: string, command: string): void {
+  if (!existsSync(path)) return
 
-    if (!existing.includes(MANAGED_COMMAND_MARKER) && !looksLikeManualBridgeCommand) {
-      throw new InstallConflictError(path)
-    }
+  const existing = readFileSync(path, 'utf8')
+  const looksLikeManualBridgeCommand = existing.includes(`opencode-review-bridge ${command}`)
+
+  if (!existing.includes(MANAGED_COMMAND_MARKER) && !looksLikeManualBridgeCommand) {
+    throw new InstallConflictError(path)
   }
-
-  writeFileSync(path, content, 'utf8')
 }
 
 function renderWrapper(cliPath: string): string {
