@@ -1,4 +1,5 @@
 import { pathToFileURL } from 'node:url'
+import { GitHubCommandError } from './github.ts'
 import { installGlobal, renderInstallResult, type InstallResult } from './install.ts'
 import { reviewPull } from './review-pull.ts'
 import {
@@ -139,6 +140,11 @@ function usage(): string {
 }
 
 function formatError(error: unknown): string {
+  if (error instanceof GitHubCommandError) {
+    const stderr = error.stderr.trim()
+    return stderr.length > 0 ? `${error.message}: ${stderr}` : error.message
+  }
+
   return error instanceof Error ? error.message : String(error)
 }
 
