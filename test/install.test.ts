@@ -12,11 +12,13 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
+import { main } from '../src/cli.ts'
 import {
   InstallConflictError,
   installGlobal,
   renderGlobalCommand,
   renderInstallResult,
+  type InstallResult,
 } from '../src/install.ts'
 
 function fixture(): { home: string; sourceRoot: string; cleanup: () => void } {
@@ -132,4 +134,25 @@ test('global command rendering is deterministic', () => {
   const template = '---\ndescription: pull\n---\n\n!`npm run --silent review-pull`\n'
   const once = renderGlobalCommand(template)
   assert.equal(renderGlobalCommand(once), once)
+})
+
+test('cli exposes the install command', () => {
+  let stdout = ''
+  let stderr = ''
+  const io = {
+    stdout: (value: string) => { stdout += value },
+    stderr: (value: string) => { stderr += value },
+  }
+  const result: InstallResult = {
+    wrapperPath: '/home/user/.local/bin/opencode-review-bridge',
+    commandPaths: [
+      '/home/user/.config/opencode/commands/review-pull.md',
+      '/home/user/.config/opencode/commands/review-push.md',
+    ],
+    pathWarning: false,
+  }
+
+  assert.equal(main(['install'], io, () => 'unused', () => 'unused', () => result), 0)
+  assert.match(stdout, /Global install complete/)
+  assert.equal(stderr, '')
 })
