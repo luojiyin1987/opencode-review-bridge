@@ -6,6 +6,7 @@ import {
   reviewPush,
   type ImplementationReport,
 } from './review-push.ts'
+import { reviewStatus } from './review-status.ts'
 
 export interface CliIo {
   stdout: (value: string) => void
@@ -23,6 +24,7 @@ export function main(
   pull: () => string = reviewPull,
   push: (report: ImplementationReport) => string = reviewPush,
   install: () => InstallResult = installGlobal,
+  status: () => string = reviewStatus,
 ): number {
   const [command, ...rest] = args
 
@@ -68,6 +70,21 @@ export function main(
     }
   }
 
+  if (command === 'review-status') {
+    if (rest.length > 0) {
+      io.stderr(`review-status does not accept arguments\n\n${usage()}\n`)
+      return 1
+    }
+
+    try {
+      io.stdout(`${status()}\n`)
+      return 0
+    } catch (error) {
+      io.stderr(`review-status failed: ${formatError(error)}\n`)
+      return 1
+    }
+  }
+
   if (command === undefined || command === '--help' || command === '-h' || command === 'help') {
     io.stdout(`${usage()}\n`)
     return 0
@@ -93,6 +110,7 @@ function usage(): string {
     '  install                     Install the CLI wrapper and global OpenCode commands',
     '  review-pull                 Pull the latest actionable executor handoff from the current PR',
     '  review-push --file <path>   Publish an implementation result for the current PR head',
+    '  review-status               Show the latest bridge handoff state for the current PR',
   ].join('\n')
 }
 

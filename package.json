@@ -10,6 +10,7 @@
     "install-global": "node --experimental-strip-types src/cli.ts install",
     "review-pull": "node --experimental-strip-types src/cli.ts review-pull",
     "review-push": "node --experimental-strip-types src/cli.ts review-push",
+    "review-status": "node --experimental-strip-types src/cli.ts review-status",
     "test": "node --experimental-strip-types --test test/*.test.ts"
   }
 }

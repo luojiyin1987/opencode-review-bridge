@@ -49,7 +49,7 @@ export function installGlobal(options: InstallOptions = {}): InstallResult {
   const commandsDir = join(home, '.config', 'opencode', 'commands')
   const wrapperPath = join(binDir, 'opencode-review-bridge')
   const wrapperContent = renderWrapper(join(sourceRoot, 'src', 'cli.ts'))
-  const commands = ['review-pull', 'review-push'].map((command): CommandInstall => {
+  const commands = ['review-pull', 'review-push', 'review-status'].map((command): CommandInstall => {
     const templatePath = join(sourceRoot, '.opencode', 'commands', `${command}.md`)
     return {
       command,
@@ -92,6 +92,7 @@ export function renderGlobalCommand(template: string): string {
   const rendered = template
     .replace('npm run --silent review-pull', 'opencode-review-bridge review-pull')
     .replace('npm run --silent review-push -- --file', 'opencode-review-bridge review-push --file')
+    .replace('npm run --silent review-status', 'opencode-review-bridge review-status')
 
   if (rendered.includes(MANAGED_COMMAND_MARKER)) return rendered
   return rendered.replace('\n---\n\n', `\n---\n\n${MANAGED_COMMAND_MARKER}\n\n`)

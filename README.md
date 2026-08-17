@@ -66,11 +66,12 @@ The installer creates or updates these bridge-managed files:
 ~/.local/bin/opencode-review-bridge
 ~/.config/opencode/commands/review-pull.md
 ~/.config/opencode/commands/review-push.md
+~/.config/opencode/commands/review-status.md
 ```
 
 The CLI wrapper points at the checkout where the install command was run. Pulling new bridge source updates therefore changes CLI behavior immediately; rerun `opencode-review-bridge install` when the checkout moves or the OpenCode command templates change.
 
-Installation is idempotent for bridge-managed files. If a global `review-pull.md`, `review-push.md`, or CLI wrapper already exists and does not look bridge-managed, installation stops instead of overwriting it.
+Installation is idempotent for bridge-managed files. If a global `review-pull.md`, `review-push.md`, `review-status.md`, or CLI wrapper already exists and does not look bridge-managed, installation stops instead of overwriting it.
 
 If the installer warns that `~/.local/bin` is not on `PATH`, add it to the shell environment before using the CLI:
 
@@ -89,6 +90,7 @@ Once installed, start OpenCode from any PR-backed repository and use:
 ```text
 /review-pull
 /review-push
+/review-status
 ```
 
 ## Pull a reviewer handoff
@@ -151,6 +153,29 @@ The OpenCode command is:
 
 It asks OpenCode to summarize only observed implementation and validation results into a temporary JSON file under `.git/`, invoke the CLI, and remove the temporary file. It does not automatically commit, push, or merge code.
 
+## Inspect bridge status
+
+`review-status` is read-only. It shows the latest valid v1 handoff on the current pull request without deciding whether that handoff is actionable for the executor or reviewer:
+
+```bash
+opencode-review-bridge review-status
+```
+
+The output includes the latest packet `Kind`, `State`, source comment, and its relation to the current PR head:
+
+- `CURRENT`: the handoff targets the current PR revision
+- `STALE`: the handoff targets another revision
+- `UNBOUND`: a pre-implementation plan is not bound to a commit yet
+- `Handoff: NONE`: no valid v1 handoff exists on the PR
+
+The OpenCode command is:
+
+```text
+/review-status
+```
+
+It only reports state; it does not modify files, publish results, or merge the pull request.
+
 ## Scope
 
 The first usable version stays deliberately small:
@@ -159,8 +184,9 @@ The first usable version stays deliberately small:
 2. pull the latest actionable handoff from the current GitHub PR
 3. turn it into an OpenCode task
 4. push an implementation result back to the PR
-5. install the bridge commands for reuse across local repositories
-6. keep the user in control of every review/fix iteration
+5. inspect the latest bridge state without acting on it
+6. install the bridge commands for reuse across local repositories
+7. keep the user in control of every review/fix iteration
 
 ## Non-goals for v0
 
@@ -179,10 +205,5 @@ Implemented:
 opencode-review-bridge install
 /review-pull
 /review-push
-```
-
-Planned:
-
-```text
 /review-status
 ```

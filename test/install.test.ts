@@ -38,6 +38,10 @@ function fixture(): { home: string; sourceRoot: string; cleanup: () => void } {
     join(sourceRoot, '.opencode', 'commands', 'review-push.md'),
     '---\ndescription: push\n---\n\nnpm run --silent review-push -- --file .git/result.json\n',
   )
+  writeFileSync(
+    join(sourceRoot, '.opencode', 'commands', 'review-status.md'),
+    '---\ndescription: status\n---\n\n!`npm run --silent review-status`\n',
+  )
 
   return {
     home,
@@ -61,6 +65,7 @@ test('installs the wrapper and global OpenCode commands', () => {
     assert.match(readFileSync(result.wrapperPath, 'utf8'), /source with spaces\/src\/cli\.ts'/)
     assert.match(readFileSync(result.commandPaths[0], 'utf8'), /opencode-review-bridge review-pull/)
     assert.match(readFileSync(result.commandPaths[1], 'utf8'), /opencode-review-bridge review-push --file/)
+    assert.match(readFileSync(result.commandPaths[2], 'utf8'), /opencode-review-bridge review-status/)
   } finally {
     value.cleanup()
   }
@@ -150,11 +155,13 @@ test('cli exposes the install command', () => {
     commandPaths: [
       '/home/user/.config/opencode/commands/review-pull.md',
       '/home/user/.config/opencode/commands/review-push.md',
+      '/home/user/.config/opencode/commands/review-status.md',
     ],
     pathWarning: false,
   }
 
   assert.equal(main(['install'], io, () => 'unused', () => 'unused', () => result), 0)
   assert.match(stdout, /Global install complete/)
+  assert.match(stdout, /review-status\.md/)
   assert.equal(stderr, '')
 })
