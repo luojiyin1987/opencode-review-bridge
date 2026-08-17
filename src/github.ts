@@ -3,6 +3,8 @@ import { formatHandoff, isActionable } from './formatter.ts'
 import { parseHandoff } from './parser.ts'
 import { isCommitSha, shaMatches, type HandoffPacket, type HandoffRole } from './protocol.ts'
 
+const COMMENTS_PAGE_SIZE = 100
+
 export interface PullRequestContext {
   repository: string
   number: number
@@ -76,14 +78,23 @@ export class GitHubHandoffAdapter {
   }
 
   listHandoffs(context: PullRequestContext = this.getCurrentPullRequest()): HandoffComment[] {
-    const output = this.#runJson([
-      'api',
-      '--paginate',
-      '--slurp',
-      `repos/${context.repository}/issues/${context.number}/comments?per_page=100`,
-    ])
+    const comments: unknown[] = []
 
-    return readHandoffComments(output)
+    for (let page = 1; ; page += 1) {
+      const output = this.#runJson([
+        'api',
+        `repos/${context.repository}/issues/${context.number}/comments?per_page=${COMMENTS_PAGE_SIZE}&page=${page}`,
+      ])
+
+      if (!Array.isArray(output)) {
+        throw new TypeError('Invalid comments response from gh')
+      }
+
+      comments.push(...output)
+      if (output.length < COMMENTS_PAGE_SIZE) break
+    }
+
+    return readHandoffComments(comments)
   }
 
   getLatestHandoff(
