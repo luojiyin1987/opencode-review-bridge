@@ -1,0 +1,36 @@
+---
+description: Publish the completed implementation result to the current PR
+---
+
+Publish the implementation result for the work you just completed.
+
+Before posting:
+
+1. Inspect the actual changes and validation results from this session.
+2. Do not invent tests, checks, changed files, or outcomes that were not observed.
+3. Do not include secrets, environment variable values, credentials, raw large logs, or unrelated conversation history.
+4. The intended implementation must already be committed and pushed. Do not commit or push automatically as part of this command.
+5. If the working tree is dirty or local HEAD is not the current PR head, stop and explain what must be committed/pushed first.
+
+Write a temporary JSON report to `.git/opencode-review-bridge-result.json` with exactly these arrays:
+
+```json
+{
+  "addressed": ["short summary of each completed item"],
+  "validation": ["command/check and observed result"],
+  "changed": ["path or concise changed-area summary"],
+  "remainingConcerns": []
+}
+```
+
+Keep every array item concise and single-line. Use an empty array when there is nothing to report for a section.
+
+Then run:
+
+```bash
+npm run --silent review-push -- --file .git/opencode-review-bridge-result.json
+```
+
+Delete the temporary JSON file after the command completes.
+
+If the CLI reports `Status: POSTED`, show the PR/comment receipt to the user. If it fails, do not retry by weakening the clean-worktree or head-match checks; explain the failure instead.
