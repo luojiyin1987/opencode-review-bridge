@@ -64,18 +64,28 @@ test('retries transient pull request files reads and succeeds', () => {
   assert.equal(attempts, 2)
 })
 
-test('stops retrying transient reads after three attempts', () => {
+test('stops retrying transient reads after three attempts and preserves the first error', () => {
   let attempts = 0
+  const errors: GitHubCommandError[] = []
+
   const runner: GhRunner = (args) => {
     attempts += 1
-    throw eofError(args)
+    const error = new GitHubCommandError(
+      args,
+      `Get "https://api.github.com/example": EOF attempt ${attempts}`,
+    )
+    errors.push(error)
+    throw error
   }
 
   assert.throws(
     () => new GitHubHandoffAdapter(runner).listHandoffs(CONTEXT),
-    (error: unknown) => error instanceof GitHubCommandError && error.stderr.includes('EOF'),
+    (error: unknown) => error === errors[0],
   )
   assert.equal(attempts, 3)
+  assert.equal(errors.length, 3)
+  assert.notEqual(errors[0], errors[1])
+  assert.notEqual(errors[1], errors[2])
 })
 
 test('does not retry non-transient read failures', () => {
