@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -98,7 +99,7 @@ test('accepts the manual wrapper shape used before the installer existed', () =>
   }
 })
 
-test('refuses to overwrite an unrelated OpenCode command', () => {
+test('refuses conflicts before writing any managed files', () => {
   const value = fixture()
   try {
     const commandsDir = join(value.home, '.config', 'opencode', 'commands')
@@ -109,6 +110,7 @@ test('refuses to overwrite an unrelated OpenCode command', () => {
       () => installGlobal({ home: value.home, sourceRoot: value.sourceRoot, path: '' }),
       InstallConflictError,
     )
+    assert.equal(existsSync(join(value.home, '.local', 'bin', 'opencode-review-bridge')), false)
   } finally {
     value.cleanup()
   }
