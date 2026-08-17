@@ -71,47 +71,53 @@ test('discovers the current repository and pull request', () => {
   ])
 })
 
-test('lists valid handoffs from paginated issue comments in chronological order', () => {
+test('lists valid handoffs across manually paginated issue comments', () => {
   const newer = packet('review', 'changes_requested', HEAD, 'fix this')
   const older = packet('plan', 'ready_to_implement', null, 'do this')
+  const calls: string[][] = []
+
+  const firstPage = Array.from({ length: 100 }, (_, index) => ({
+    id: index + 10,
+    body: 'ordinary PR discussion',
+    created_at: '2026-08-17T07:02:00Z',
+    html_url: `https://example.test/${index + 10}`,
+  }))
+  firstPage[99] = {
+    id: 3,
+    body: formatHandoff(newer),
+    created_at: '2026-08-17T07:03:00Z',
+    html_url: 'https://example.test/3',
+  }
 
   const runner: GhRunner = (args) => {
-    assert.deepEqual(args, [
-      'api',
-      '--paginate',
-      '--slurp',
-      'repos/owner/repo/issues/12/comments?per_page=100',
-    ])
+    calls.push([...args])
+    assert.equal(args[0], 'api')
+    assert.equal(args.length, 2)
 
-    return JSON.stringify([
-      [
-        {
-          id: 3,
-          body: formatHandoff(newer),
-          created_at: '2026-08-17T07:03:00Z',
-          html_url: 'https://example.test/3',
-        },
-        {
-          id: 2,
-          body: 'ordinary PR discussion',
-          created_at: '2026-08-17T07:02:00Z',
-          html_url: 'https://example.test/2',
-        },
-      ],
-      [
+    if (args[1].endsWith('per_page=100&page=1')) {
+      return JSON.stringify(firstPage)
+    }
+    if (args[1].endsWith('per_page=100&page=2')) {
+      return JSON.stringify([
         {
           id: 1,
           body: formatHandoff(older),
           created_at: '2026-08-17T07:01:00Z',
           html_url: 'https://example.test/1',
         },
-      ],
-    ])
+      ])
+    }
+
+    throw new Error(`Unexpected gh call: ${args.join(' ')}`)
   }
 
   const adapter = new GitHubHandoffAdapter(runner)
   const handoffs = adapter.listHandoffs(CONTEXT)
 
+  assert.deepEqual(calls, [
+    ['api', 'repos/owner/repo/issues/12/comments?per_page=100&page=1'],
+    ['api', 'repos/owner/repo/issues/12/comments?per_page=100&page=2'],
+  ])
   assert.deepEqual(handoffs.map((item) => item.id), [1, 3])
   assert.deepEqual(handoffs.map((item) => item.packet.body), ['do this', 'fix this'])
 })
