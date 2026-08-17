@@ -27,11 +27,15 @@ const readyComment: HandoffComment = {
   },
 }
 
-test('renders a ready handoff with execution guardrails and body', () => {
+test('renders a ready handoff with executor boundary, execution guardrails, and body', () => {
   const output = renderReviewPull(context, { status: 'ready', comment: readyComment })
 
   assert.match(output, /Status: READY/)
   assert.match(output, /Kind: review/)
+  assert.match(output, /## Executor boundary/)
+  assert.match(output, /acting as the executor.*not as the reviewer/i)
+  assert.match(output, /Do not invoke `\/review-push`.*`review-submit`/)
+  assert.match(output, /Wait for an explicit user command before publishing an implementation result/)
   assert.match(output, /Do not merge the pull request/)
   assert.match(output, /Add the missing regression test/)
 })

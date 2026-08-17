@@ -4,6 +4,8 @@ description: Publish the completed implementation result to the current PR
 
 Publish the implementation result for the work you just completed.
 
+This is an executor-only command. It may publish an `implementation_result`, but it must never publish a reviewer decision, call `review-submit`, or continue into approval/change-request actions.
+
 Before posting:
 
 1. Inspect the actual changes and validation results from this session.
@@ -34,4 +36,6 @@ npm run --silent review-push -- --file .git/opencode-review-bridge-result.json
 
 Delete the temporary JSON file after the command completes.
 
-If the CLI reports `Status: POSTED`, show the PR/comment receipt to the user. If it fails, do not retry by weakening the clean-worktree or head-match checks; explain the failure instead.
+If the CLI reports `Status: POSTED`, show the PR/comment receipt to the user and stop. The executor phase is complete; wait for the reviewer. Do not invoke `review-submit`, do not publish `approved` or `changes_requested`, and do not continue the bridge workflow on the reviewer's behalf.
+
+If it fails, do not retry by weakening the clean-worktree or head-match checks; explain the failure instead.
