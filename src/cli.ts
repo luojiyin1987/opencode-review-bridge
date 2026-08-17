@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import { GitHubCommandError } from './github.ts'
 import { installGlobal, renderInstallResult, type InstallResult } from './install.ts'
@@ -9,6 +10,7 @@ import {
 } from './review-push.ts'
 import { reviewStatus } from './review-status.ts'
 import {
+  normalizeReviewReport,
   readReviewReportFile,
   reviewSubmit,
   type ReviewReport,
@@ -32,6 +34,7 @@ export function main(
   install: () => InstallResult = installGlobal,
   status: () => string = reviewStatus,
   submit: (report: ReviewReport) => string = reviewSubmit,
+  readStdin: () => string = defaultReadStdin,
 ): number {
   const [command, ...rest] = args
 
@@ -93,14 +96,16 @@ export function main(
   }
 
   if (command === 'review-submit') {
-    const file = readFileArgument(rest)
-    if (!file) {
-      io.stderr(`review-submit requires --file <review.json>\n\n${usage()}\n`)
+    const input = readReviewSubmitInput(rest)
+    if (!input) {
+      io.stderr(`review-submit requires exactly one of --file <review.json> or --stdin\n\n${usage()}\n`)
       return 1
     }
 
     try {
-      const report = readReviewReportFile(file)
+      const report = input.kind === 'file'
+        ? readReviewReportFile(input.path)
+        : readReviewReportStdin(readStdin)
       io.stdout(`${submit(report)}\n`)
       return 0
     } catch (error) {
@@ -126,16 +131,47 @@ function readFileArgument(args: readonly string[]): string | null {
   return args[1]
 }
 
+function readReviewSubmitInput(
+  args: readonly string[],
+): { kind: 'file'; path: string } | { kind: 'stdin' } | null {
+  if (args.length === 1 && args[0] === '--stdin') {
+    return { kind: 'stdin' }
+  }
+
+  const file = readFileArgument(args)
+  return file ? { kind: 'file', path: file } : null
+}
+
+function readReviewReportStdin(readStdin: () => string): ReviewReport {
+  const input = readStdin()
+  let value: unknown
+  try {
+    value = JSON.parse(input)
+  } catch (cause) {
+    throw new TypeError('Could not parse reviewer report from stdin', { cause })
+  }
+
+  return normalizeReviewReport(value)
+}
+
+function defaultReadStdin(): string {
+  if (process.stdin.isTTY) {
+    throw new Error('review-submit --stdin requires piped JSON input')
+  }
+
+  return readFileSync(0, 'utf8')
+}
+
 function usage(): string {
   return [
     'Usage: opencode-review-bridge <command>',
     '',
     'Commands:',
-    '  install                     Install the CLI wrapper and global OpenCode commands',
-    '  review-pull                 Pull the latest actionable executor handoff from the current PR',
-    '  review-push --file <path>   Publish an implementation result for the current PR head',
-    '  review-status               Show the latest bridge handoff state for the current PR',
-    '  review-submit --file <path> Publish a reviewer decision for a ready implementation result',
+    '  install                                Install the CLI wrapper and global OpenCode commands',
+    '  review-pull                            Pull the latest actionable executor handoff from the current PR',
+    '  review-push --file <path>              Publish an implementation result for the current PR head',
+    '  review-status                          Show the latest bridge handoff state for the current PR',
+    '  review-submit (--file <path> | --stdin) Publish a reviewer decision for a ready implementation result',
   ].join('\n')
 }
 

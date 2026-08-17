@@ -219,7 +219,7 @@ test('cli reads a reviewer report file and publishes it through the injected sub
 
     stdout = ''
     assert.equal(main(['review-submit'], io), 1)
-    assert.match(stderr, /review-submit requires --file/)
+    assert.match(stderr, /review-submit requires exactly one of --file <review\.json> or --stdin/)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

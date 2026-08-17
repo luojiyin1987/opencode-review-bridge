@@ -167,11 +167,19 @@ It asks OpenCode to summarize only observed implementation and validation result
 }
 ```
 
-Run it with:
+A human reviewer can submit a report file:
 
 ```bash
 opencode-review-bridge review-submit --file .git/opencode-review-bridge-review.json
 ```
+
+Integrations that already have the JSON in memory can stream the same report without creating a temporary file:
+
+```bash
+cat review.json | opencode-review-bridge review-submit --stdin
+```
+
+Exactly one input mode is required. `--stdin` reads one JSON document until EOF and applies the same report validation and current-head guards as `--file`. Run `--stdin` with redirected or piped input; interactive terminal stdin is rejected instead of waiting for EOF.
 
 The command only publishes when the latest valid v1 handoff is a current `implementation_result / ready_to_review`. This prevents a reviewer from skipping the executor result or reviewing an older PR revision.
 
@@ -235,7 +243,7 @@ Implemented:
 
 ```text
 opencode-review-bridge install
-opencode-review-bridge review-submit --file <review.json>
+opencode-review-bridge review-submit (--file <review.json> | --stdin)
 /review-pull
 /review-push
 /review-status
