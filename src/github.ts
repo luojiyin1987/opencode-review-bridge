@@ -5,6 +5,7 @@ import { isCommitSha, shaMatches, type HandoffPacket, type HandoffRole } from '.
 
 const COMMENTS_PAGE_SIZE = 100
 const PULL_FILES_PAGE_SIZE = 100
+const READ_RETRY_ATTEMPTS = 3
 
 export interface PullRequestContext {
   repository: string
@@ -65,10 +66,10 @@ export class GitHubHandoffAdapter {
   }
 
   getCurrentPullRequest(): PullRequestContext {
-    const repositoryResult = this.#runJson(['repo', 'view', '--json', 'nameWithOwner'])
+    const repositoryResult = this.#runReadJson(['repo', 'view', '--json', 'nameWithOwner'])
     const repository = readRepositoryName(repositoryResult)
 
-    const pullRequestResult = this.#runJson([
+    const pullRequestResult = this.#runReadJson([
       'pr',
       'view',
       '--json',
@@ -82,7 +83,7 @@ export class GitHubHandoffAdapter {
     const comments: unknown[] = []
 
     for (let page = 1; ; page += 1) {
-      const output = this.#runJson([
+      const output = this.#runReadJson([
         'api',
         `repos/${context.repository}/issues/${context.number}/comments?per_page=${COMMENTS_PAGE_SIZE}&page=${page}`,
       ])
@@ -102,7 +103,7 @@ export class GitHubHandoffAdapter {
     const filenames: string[] = []
 
     for (let page = 1; ; page += 1) {
-      const output = this.#runJson([
+      const output = this.#runReadJson([
         'api',
         `repos/${context.repository}/pulls/${context.number}/files?per_page=${PULL_FILES_PAGE_SIZE}&page=${page}`,
       ])
@@ -168,6 +169,27 @@ export class GitHubHandoffAdapter {
     }
   }
 
+  #runReadJson(args: readonly string[], input?: string): unknown {
+    let firstTransientError: GitHubCommandError | null = null
+
+    for (let attempt = 1; attempt <= READ_RETRY_ATTEMPTS; attempt += 1) {
+      try {
+        return this.#runJson(args, input)
+      } catch (error) {
+        if (!isTransientGitHubReadError(error)) {
+          throw error
+        }
+
+        firstTransientError ??= error
+        if (attempt === READ_RETRY_ATTEMPTS) {
+          throw firstTransientError
+        }
+      }
+    }
+
+    throw new Error('Unreachable GitHub read retry state')
+  }
+
   #runJson(args: readonly string[], input?: string): unknown {
     const output = this.#runGh(args, input)
     try {
@@ -196,6 +218,20 @@ export function selectLatestHandoff(
   }
 
   return { status: 'none' }
+}
+
+function isTransientGitHubReadError(error: unknown): error is GitHubCommandError {
+  if (!(error instanceof GitHubCommandError)) return false
+
+  const cause = error.cause
+  const causeMessage = cause instanceof Error
+    ? cause.message
+    : typeof cause === 'string'
+      ? cause
+      : ''
+  const detail = `${error.stderr}\n${causeMessage}`
+
+  return /\bEOF\b|ECONNRESET|ETIMEDOUT|connection reset|timed out|timeout|i\/o timeout|context deadline exceeded/i.test(detail)
 }
 
 function readRepositoryName(value: unknown): string {
