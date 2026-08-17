@@ -32,6 +32,16 @@ The agents exchange small structured handoff packets instead of copying complete
 
 See [docs/protocol.md](docs/protocol.md) for the v1 packet format and state transitions.
 
+## Requirements
+
+The v0 GitHub transport expects:
+
+- Node.js 22.6 or newer
+- the GitHub CLI (`gh`) installed and authenticated
+- a local checkout whose current branch has a GitHub pull request
+
+The adapter invokes `gh` directly with argument arrays and passes comment bodies through stdin; it does not execute handoff text as shell input.
+
 ## Scope
 
 The first usable version will stay deliberately small:
