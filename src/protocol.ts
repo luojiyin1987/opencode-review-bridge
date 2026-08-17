@@ -9,6 +9,13 @@ export const HANDOFF_KINDS = [
 
 export const HANDOFF_STATES = [
   'ready_to_implement',
+  'ready_to_review',
+  'changes_requested',
+  'approved',
+] as const
+
+export const WORKFLOW_STATES = [
+  'ready_to_implement',
   'implementing',
   'ready_to_review',
   'changes_requested',
@@ -17,6 +24,7 @@ export const HANDOFF_STATES = [
 
 export type HandoffKind = (typeof HANDOFF_KINDS)[number]
 export type HandoffState = (typeof HANDOFF_STATES)[number]
+export type WorkflowState = (typeof WORKFLOW_STATES)[number]
 export type HandoffRole = 'executor' | 'reviewer'
 
 export interface HandoffMetadata {
@@ -43,6 +51,10 @@ export function isHandoffKind(value: unknown): value is HandoffKind {
 
 export function isHandoffState(value: unknown): value is HandoffState {
   return typeof value === 'string' && HANDOFF_STATES.includes(value as HandoffState)
+}
+
+export function isWorkflowState(value: unknown): value is WorkflowState {
+  return typeof value === 'string' && WORKFLOW_STATES.includes(value as WorkflowState)
 }
 
 export function isCommitSha(value: unknown): value is string {
