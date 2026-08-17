@@ -42,6 +42,30 @@ The v0 GitHub transport expects:
 
 The adapter invokes `gh` directly with argument arrays and passes comment bodies through stdin; it does not execute handoff text as shell input.
 
+## Pull a reviewer handoff
+
+From a checkout whose current branch has a pull request:
+
+```bash
+npm run review-pull
+```
+
+The command returns one of three explicit states:
+
+- `READY`: the newest executor handoff matches the current PR revision and its body is emitted as task context
+- `STALE`: the newest executor handoff targets another revision; the old task body is not emitted
+- `NONE`: there is no actionable plan or change request
+
+This repository also includes a project-local OpenCode command at `.opencode/commands/review-pull.md`. While developing the bridge itself, run this in the OpenCode TUI:
+
+```text
+/review-pull
+```
+
+The command injects the CLI output into the OpenCode prompt. `STALE` and `NONE` explicitly instruct the agent not to modify files.
+
+Packaging the command for reuse from unrelated repositories is intentionally left for a later change.
+
 ## Scope
 
 The first usable version will stay deliberately small:
@@ -61,12 +85,17 @@ The first usable version will stay deliberately small:
 - no full conversation synchronization
 - no autonomous merge
 
-## Planned commands
+## Commands
+
+Implemented:
 
 ```text
 /review-pull
+```
+
+Planned:
+
+```text
 /review-status
 /review-push
 ```
-
-The exact OpenCode integration will be implemented after the v1 handoff protocol is stable.
