@@ -45,37 +45,38 @@ Required fields:
 | --- | --- | --- |
 | `schema` | string | Must be `opencode-review-bridge/v1`. |
 | `kind` | string | Packet kind: `plan`, `review`, or `implementation_result`. |
-| `state` | string | Workflow state after this packet is applied. |
+| `state` | string | Packet state after this handoff is applied. Must be `ready_to_implement`, `ready_to_review`, `changes_requested`, or `approved`. |
 | `head` | string or null | Commit SHA the packet describes. `null` is allowed for a plan created before implementation starts. |
 
 Unknown metadata fields must be ignored for forward compatibility.
 
 ## States
 
-v1 defines these states:
+v1 handoff packet metadata supports these states:
 
 - `ready_to_implement`
-- `implementing`
 - `ready_to_review`
 - `changes_requested`
 - `approved`
 
-The normal transition is:
+The broader workflow also uses `implementing`, but it is a local-only executor state in v0. It is not valid handoff metadata and must not be emitted in a v1 GitHub packet.
+
+The normal workflow is:
 
 ```text
 ready_to_implement
         ↓
-   implementing
+   implementing       (local only)
         ↓
  ready_to_review
     ↙        ↘
 changes_     approved
 requested
     ↓
-implementing
+implementing           (local only)
 ```
 
-`implementing` may be local-only in v0. A GitHub comment does not have to be emitted for every transition.
+A GitHub comment does not have to be emitted for local-only transitions.
 
 ## Packet kinds
 
