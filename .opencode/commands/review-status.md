@@ -8,4 +8,8 @@ Inspect the current pull request bridge state:
 
 Report the status as read-only context. Do not modify files, run implementation work, publish a result, or merge the pull request because of this command.
 
-Use the reported `Kind`, `State`, and `Revision` to explain where the handoff cycle currently stands. If `Revision: STALE`, make clear that the latest handoff targets another PR revision.
+Treat the command output as authoritative. Explain only what is explicitly encoded by `Handoff`, `Kind`, `State`, `Revision`, and `Next`.
+
+Do not infer unreported history such as whether a plan was reviewed or approved, whether a planning phase is complete, or whether other lifecycle stages occurred. Do not invent additional lifecycle stages or transitions.
+
+If `Revision: STALE`, make clear only that the latest handoff targets another PR revision. When a `Next:` line is present, preserve its meaning rather than deriving a different next action.
