@@ -153,6 +153,36 @@ The OpenCode command is:
 
 It asks OpenCode to summarize only observed implementation and validation results into a temporary JSON file under `.git/`, invoke the CLI, and remove the temporary file. It does not automatically commit, push, or merge code.
 
+## Submit a reviewer decision
+
+`review-submit` is the reviewer-side publishing primitive. It converts a small structured review report into a v1 `review` packet bound to the current PR head:
+
+```json
+{
+  "decision": "changes_requested",
+  "summary": ["Reviewed the current implementation result."],
+  "mustFix": ["Add a regression test for the stale-head case."],
+  "notes": []
+}
+```
+
+Run it with:
+
+```bash
+opencode-review-bridge review-submit --file .git/opencode-review-bridge-review.json
+```
+
+The command only publishes when the latest valid v1 handoff is a current `implementation_result / ready_to_review`. This prevents a reviewer from skipping the executor result or reviewing an older PR revision.
+
+Review report rules:
+
+- `decision` is either `changes_requested` or `approved`
+- `summary` must contain at least one item
+- `changes_requested` must contain at least one `mustFix` item
+- `approved` must not contain any `mustFix` items
+
+This command is intentionally not installed as an OpenCode slash command because it belongs to the reviewer role. A ChatGPT integration, human reviewer, MCP adapter, or future API integration can produce the same structured decision and publish the equivalent v1 packet through GitHub.
+
 ## Inspect bridge status
 
 `review-status` is read-only. It shows the latest valid v1 handoff on the current pull request without deciding whether that handoff is actionable for the executor or reviewer:
@@ -184,9 +214,10 @@ The first usable version stays deliberately small:
 2. pull the latest actionable handoff from the current GitHub PR
 3. turn it into an OpenCode task
 4. push an implementation result back to the PR
-5. inspect the latest bridge state without acting on it
-6. install the bridge commands for reuse across local repositories
-7. keep the user in control of every review/fix iteration
+5. publish an explicit reviewer decision for the current implementation result
+6. inspect the latest bridge state without acting on it
+7. install the executor commands for reuse across local repositories
+8. keep the user in control of every review/fix iteration
 
 ## Non-goals for v0
 
@@ -203,6 +234,7 @@ Implemented:
 
 ```text
 opencode-review-bridge install
+opencode-review-bridge review-submit --file <review.json>
 /review-pull
 /review-push
 /review-status
