@@ -127,10 +127,11 @@ npm run review-pull
 {
   "addressed": ["Implemented the requested fix."],
   "validation": ["npm test: PASS"],
-  "changed": ["src/example.ts", "test/example.test.ts"],
   "remainingConcerns": []
 }
 ```
+
+The `## Changed` section is not supplied by the executor. The bridge reads the canonical filenames from the current GitHub pull request and includes them in the published handoff. Legacy input files that still contain an extra `changed` field remain readable, but that field is ignored.
 
 Run it with:
 
@@ -151,7 +152,7 @@ The OpenCode command is:
 /review-push
 ```
 
-It asks OpenCode to summarize only observed implementation and validation results into a temporary JSON file under `.git/`, invoke the CLI, and remove the temporary file. It does not automatically commit, push, or merge code.
+It asks OpenCode to summarize only observed implementation and validation results into a temporary JSON file under `.git/`, invoke the CLI, and remove the temporary file. Changed filenames are derived from GitHub rather than model-authored text. It does not automatically commit, push, or merge code.
 
 ## Submit a reviewer decision
 

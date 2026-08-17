@@ -11,12 +11,12 @@ import { isCommitSha, shaMatches, type HandoffPacket } from './protocol.ts'
 export interface ImplementationReport {
   addressed: string[]
   validation: string[]
-  changed: string[]
   remainingConcerns: string[]
 }
 
 export interface ReviewPushSource {
   getCurrentPullRequest(): PullRequestContext
+  listChangedFiles(context: PullRequestContext): string[]
   postHandoff(packet: HandoffPacket, context: PullRequestContext): HandoffComment
 }
 
@@ -98,6 +98,7 @@ export function reviewPush(
     throw new Error(`Local HEAD ${local.head} does not match PR head ${context.head}; push the intended commit before publishing`)
   }
 
+  const changedFiles = source.listChangedFiles(context)
   const packet: HandoffPacket = {
     metadata: {
       schema: 'opencode-review-bridge/v1',
@@ -105,7 +106,7 @@ export function reviewPush(
       state: 'ready_to_review',
       head: context.head,
     },
-    body: renderImplementationReport(normalized),
+    body: renderImplementationReport(normalized, changedFiles),
   }
 
   const comment = source.postHandoff(packet, context)
@@ -123,8 +124,12 @@ export function reviewPush(
   ].join('\n')
 }
 
-export function renderImplementationReport(report: ImplementationReport): string {
+export function renderImplementationReport(
+  report: ImplementationReport,
+  changedFiles: readonly string[],
+): string {
   const normalized = normalizeImplementationReport(report)
+  const changed = normalizeItems(changedFiles, 'changedFiles')
 
   return [
     '## Addressed',
@@ -137,7 +142,7 @@ export function renderImplementationReport(report: ImplementationReport): string
     '',
     '## Changed',
     '',
-    renderList(normalized.changed),
+    renderList(changed),
     '',
     '## Remaining concerns',
     '',
@@ -164,7 +169,6 @@ export function normalizeImplementationReport(value: unknown): ImplementationRep
   return {
     addressed: normalizeItems(value.addressed, 'addressed'),
     validation: normalizeItems(value.validation, 'validation'),
-    changed: normalizeItems(value.changed, 'changed'),
     remainingConcerns: normalizeItems(value.remainingConcerns, 'remainingConcerns'),
   }
 }
