@@ -64,6 +64,29 @@ test('cli rejects malformed reviewer JSON from stdin', () => {
   assert.match(output.stderr(), /Could not parse reviewer report from stdin/)
 })
 
+test('cli surfaces stdin reader failures without publishing', () => {
+  const output = captureIo()
+  let submitted = false
+
+  const result = main(
+    ['review-submit', '--stdin'],
+    output.io,
+    () => 'unused',
+    () => 'unused',
+    () => ({ wrapperPath: '/tmp/orb', commandPaths: [], pathWarning: false }),
+    () => 'unused',
+    () => {
+      submitted = true
+      return 'unused'
+    },
+    () => { throw new Error('review-submit --stdin requires piped JSON input') },
+  )
+
+  assert.equal(result, 1)
+  assert.equal(submitted, false)
+  assert.match(output.stderr(), /review-submit --stdin requires piped JSON input/)
+})
+
 test('cli requires exactly one review-submit input mode', () => {
   const missing = captureIo()
   assert.equal(main(['review-submit'], missing.io), 1)
