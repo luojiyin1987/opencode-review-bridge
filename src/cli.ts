@@ -1,5 +1,10 @@
 import { pathToFileURL } from 'node:url'
 import { reviewPull } from './review-pull.ts'
+import {
+  readImplementationReportFile,
+  reviewPush,
+  type ImplementationReport,
+} from './review-push.ts'
 
 export interface CliIo {
   stdout: (value: string) => void
@@ -15,8 +20,9 @@ export function main(
   args: readonly string[] = process.argv.slice(2),
   io: CliIo = defaultIo,
   pull: () => string = reviewPull,
+  push: (report: ImplementationReport) => string = reviewPush,
 ): number {
-  const [command] = args
+  const [command, ...rest] = args
 
   if (command === 'review-pull') {
     try {
@@ -24,6 +30,23 @@ export function main(
       return 0
     } catch (error) {
       io.stderr(`review-pull failed: ${formatError(error)}\n`)
+      return 1
+    }
+  }
+
+  if (command === 'review-push') {
+    const file = readFileArgument(rest)
+    if (!file) {
+      io.stderr(`review-push requires --file <report.json>\n\n${usage()}\n`)
+      return 1
+    }
+
+    try {
+      const report = readImplementationReportFile(file)
+      io.stdout(`${push(report)}\n`)
+      return 0
+    } catch (error) {
+      io.stderr(`review-push failed: ${formatError(error)}\n`)
       return 1
     }
   }
@@ -37,12 +60,21 @@ export function main(
   return 1
 }
 
+function readFileArgument(args: readonly string[]): string | null {
+  if (args.length !== 2 || args[0] !== '--file' || args[1].trim().length === 0) {
+    return null
+  }
+
+  return args[1]
+}
+
 function usage(): string {
   return [
     'Usage: opencode-review-bridge <command>',
     '',
     'Commands:',
-    '  review-pull  Pull the latest actionable executor handoff from the current PR',
+    '  review-pull                Pull the latest actionable executor handoff from the current PR',
+    '  review-push --file <path>  Publish an implementation result for the current PR head',
   ].join('\n')
 }
 
