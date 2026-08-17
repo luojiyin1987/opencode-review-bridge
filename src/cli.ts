@@ -1,4 +1,5 @@
 import { pathToFileURL } from 'node:url'
+import { installGlobal, renderInstallResult, type InstallResult } from './install.ts'
 import { reviewPull } from './review-pull.ts'
 import {
   readImplementationReportFile,
@@ -21,8 +22,24 @@ export function main(
   io: CliIo = defaultIo,
   pull: () => string = reviewPull,
   push: (report: ImplementationReport) => string = reviewPush,
+  install: () => InstallResult = installGlobal,
 ): number {
   const [command, ...rest] = args
+
+  if (command === 'install') {
+    if (rest.length > 0) {
+      io.stderr(`install does not accept arguments\n\n${usage()}\n`)
+      return 1
+    }
+
+    try {
+      io.stdout(`${renderInstallResult(install())}\n`)
+      return 0
+    } catch (error) {
+      io.stderr(`install failed: ${formatError(error)}\n`)
+      return 1
+    }
+  }
 
   if (command === 'review-pull') {
     try {
@@ -73,8 +90,9 @@ function usage(): string {
     'Usage: opencode-review-bridge <command>',
     '',
     'Commands:',
-    '  review-pull                Pull the latest actionable executor handoff from the current PR',
-    '  review-push --file <path>  Publish an implementation result for the current PR head',
+    '  install                     Install the CLI wrapper and global OpenCode commands',
+    '  review-pull                 Pull the latest actionable executor handoff from the current PR',
+    '  review-push --file <path>   Publish an implementation result for the current PR head',
   ].join('\n')
 }
 
