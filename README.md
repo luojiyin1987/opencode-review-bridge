@@ -42,6 +42,59 @@ The v0 GitHub transport expects:
 
 The adapter invokes `gh` directly with argument arrays and passes comment bodies through stdin; it does not execute handoff text as shell input.
 
+Read-only GitHub operations retry a small set of transient `EOF`, connection-reset, and timeout-style failures up to three attempts. Handoff publication is intentionally single-attempt so an ambiguous write response cannot create duplicate comments.
+
+## Quick start
+
+Install the bridge from a stable local checkout:
+
+```bash
+git clone https://github.com/luojiyin1987/opencode-review-bridge.git
+cd opencode-review-bridge
+npm run install-global
+```
+
+Then open a repository branch that already has a GitHub pull request and start OpenCode from that checkout.
+
+The normal review cycle is:
+
+```text
+Reviewer publishes plan / ready_to_implement
+  ↓
+OpenCode: /review-pull
+  ↓
+OpenCode implements, validates, summarizes, then stops
+  ↓
+User explicitly starts: /review-push
+  ↓
+Bridge publishes implementation_result / ready_to_review
+  ↓
+Reviewer inspects the current diff
+  ↓
+Reviewer: review-submit --stdin or --file
+  ↓
+review / approved or review / changes_requested
+```
+
+The two executor commands are deliberately separate. `/review-pull` does not chain into `/review-push`, and `/review-push` does not make reviewer decisions. `review-submit` is reviewer-side only and is not installed as an OpenCode slash command.
+
+A reviewer can publish a decision without creating a temporary file:
+
+```bash
+cat <<'JSON' | opencode-review-bridge review-submit --stdin
+{
+  "decision": "approved",
+  "summary": ["Reviewed the current implementation result."],
+  "mustFix": [],
+  "notes": []
+}
+JSON
+```
+
+Use `/review-status` at any point to inspect the latest valid bridge packet without changing workflow state.
+
+For a complete release smoke test and the v0.1.0 checklist, see [docs/release-v0.1.0.md](docs/release-v0.1.0.md).
+
 ## Global install
 
 The current installer targets WSL, Linux, and other POSIX environments with `bash` available.
@@ -192,6 +245,15 @@ Review report rules:
 
 This command is intentionally not installed as an OpenCode slash command because it belongs to the reviewer role. A ChatGPT integration, human reviewer, MCP adapter, or future API integration can produce the same structured decision and publish the equivalent v1 packet through GitHub.
 
+## Role boundary
+
+The executor/reviewer split is a behavioral workflow boundary, not a security boundary.
+
+- `/review-pull` authorizes executor work only and stops after implementation/validation summary.
+- `/review-push` publishes only `implementation_result / ready_to_review` and then stops.
+- reviewer decisions (`approved`, `changes_requested`, or any `kind: review` packet) belong to `review-submit` or another reviewer-side integration.
+- a shared local shell can still technically invoke reviewer commands; hard isolation would require separate identities, credentials, capabilities, or processes.
+
 ## Inspect bridge status
 
 `review-status` is read-only. It shows the latest valid v1 handoff on the current pull request without deciding whether that handoff is actionable for the executor or reviewer:
@@ -227,6 +289,15 @@ The first usable version stays deliberately small:
 6. inspect the latest bridge state without acting on it
 7. install the executor commands for reuse across local repositories
 8. keep the user in control of every review/fix iteration
+
+## Known limitations for v0.1.0
+
+- GitHub pull-request comments are the only shared-state transport.
+- The current installer targets POSIX environments with `bash`; Windows-native installation is not provided.
+- Executor/reviewer separation is behavioral, not credential-level isolation.
+- Read-only transient GitHub failures have bounded retry; write operations are intentionally not retried automatically.
+- There is no automatic commit, push, merge, or background workflow orchestration.
+- This repository is currently distributed as source rather than as a published npm package.
 
 ## Non-goals for v0
 
